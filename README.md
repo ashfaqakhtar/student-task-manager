@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Smart Study Planner
 
-## Getting Started
+Smart Study Planner is a premium-feel student task manager built with React, Vite, Zustand, `date-fns`, and localStorage persistence. It ships with a polished dark-first UI, Kanban planning, calendar workload mapping, Pomodoro focus mode, recurring tasks, subtasks, and saved filter views.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open the local Vite URL shown in the terminal.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Overview dashboard with deadline timeline, smart sorting, combined filters, and saved views
+- Kanban board with native HTML5 drag-and-drop across and within columns
+- Monthly calendar with workload heatmap and day detail panel
+- Focus mode with Pomodoro timer, session logging, inline notes, and subtask checklist
+- Recurring tasks that automatically generate the next instance
+- Subject color system persisted in localStorage
+- Dark theme by default with a light mode toggle
+- First-launch name prompt and zero-task empty state
 
-## Learn More
+## Keyboard Shortcuts
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `n` open a new task
+- `Escape` close open modals
+- `/` focus search
+- `b` open Board
+- `o` open Overview
+- `c` open Calendar
+- `f` open Focus mode for the first task in progress
