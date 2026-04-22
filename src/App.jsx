@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTaskStore } from "./store/taskStore";
 import { useTasks } from "./hooks/useTasks";
