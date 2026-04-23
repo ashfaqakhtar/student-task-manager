@@ -19,6 +19,11 @@ export default function RecommendedTasks({ tasks, colors, onFocus }) {
                 <Badge muted>{task.effort}</Badge>
                 <Badge muted>{task.estimatedMinutes} min</Badge>
               </div>
+              <div className="today-card__reasons">
+                {task.recommendationReasons?.map((reason) => (
+                  <span key={reason}>{reason}</span>
+                ))}
+              </div>
             </div>
             <Button variant="secondary" onClick={() => onFocus(task)}>Focus</Button>
           </article>

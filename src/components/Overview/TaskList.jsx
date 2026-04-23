@@ -11,6 +11,7 @@ export default function TaskList({
   onSaveView,
   onFocus,
   onToggleSubtask,
+  onToggleSyllabusTopic,
   subjects,
   savedViews,
   searchRef,
@@ -45,6 +46,7 @@ export default function TaskList({
             color={colors[task.subject]}
             onFocus={onFocus}
             onToggleSubtask={onToggleSubtask}
+            onToggleSyllabusTopic={onToggleSyllabusTopic}
           />
         ))}
       </div>

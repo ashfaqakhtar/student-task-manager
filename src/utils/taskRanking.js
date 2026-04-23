@@ -34,24 +34,49 @@ function scoreScheduledDate(task) {
   return 0;
 }
 
+function scoreSubtaskProgress(task) {
+  const subtasks = task.subtasks || [];
+  if (!subtasks.length) return 0;
+
+  const completed = subtasks.filter((subtask) => subtask.done).length;
+  const ratio = completed / subtasks.length;
+
+  if (ratio >= 0.8) return 8;
+  if (ratio >= 0.4) return 4;
+  return 0;
+}
+
+export function getTaskScoreBreakdown(task) {
+  const urgency = getUrgency(task.deadline) || "none";
+  const shortTaskWeight = Number(task.estimatedMinutes || 0) <= 45 ? 6 : 0;
+
+  return {
+    urgency,
+    urgencyWeight: urgencyScoreMap[urgency],
+    priorityWeight: 12 - priorityOrder[task.priority] * 4,
+    effortWeight: effortScoreMap[task.effort || "medium"] || 0,
+    inProgressWeight: task.status === "in-progress" ? 14 : 0,
+    thisWeekWeight: task.status === "this-week" ? 6 : 0,
+    shortTaskWeight,
+    scheduledWeight: scoreScheduledDate(task),
+    progressWeight: scoreSubtaskProgress(task),
+  };
+}
+
 export function getTaskRank(task) {
   if (task.status === "completed") return -999;
 
-  const urgency = getUrgency(task.deadline) || "none";
-  const priorityWeight = 12 - priorityOrder[task.priority] * 4;
-  const effortWeight = effortScoreMap[task.effort || "medium"] || 0;
-  const inProgressWeight = task.status === "in-progress" ? 14 : 0;
-  const thisWeekWeight = task.status === "this-week" ? 6 : 0;
-  const shortTaskWeight = Number(task.estimatedMinutes || 0) <= 45 ? 6 : 0;
+  const breakdown = getTaskScoreBreakdown(task);
 
   return (
-    urgencyScoreMap[urgency] +
-    priorityWeight +
-    effortWeight +
-    inProgressWeight +
-    thisWeekWeight +
-    shortTaskWeight +
-    scoreScheduledDate(task)
+    breakdown.urgencyWeight +
+    breakdown.priorityWeight +
+    breakdown.effortWeight +
+    breakdown.inProgressWeight +
+    breakdown.thisWeekWeight +
+    breakdown.shortTaskWeight +
+    breakdown.scheduledWeight +
+    breakdown.progressWeight
   );
 }
 
@@ -61,4 +86,23 @@ export function rankTasks(tasks) {
 
 export function isQuickWin(task) {
   return task.status !== "completed" && Number(task.estimatedMinutes || 0) <= 30;
+}
+
+export function getRecommendationReasons(task) {
+  const breakdown = getTaskScoreBreakdown(task);
+  const reasons = [];
+
+  if (breakdown.urgency === "overdue") reasons.push("Overdue and needs recovery");
+  if (breakdown.urgency === "today") reasons.push("Due today");
+  if (breakdown.urgency === "tomorrow" || breakdown.urgency === "soon") {
+    reasons.push("Deadline is approaching");
+  }
+  if (breakdown.inProgressWeight) reasons.push("Already in progress");
+  if (breakdown.scheduledWeight >= 18) reasons.push("Scheduled for today");
+  if (task.priority === "high") reasons.push("High priority");
+  if (breakdown.shortTaskWeight) reasons.push("Fits a short focus block");
+  if (breakdown.progressWeight) reasons.push("Close to finishing subtasks");
+  if (!reasons.length) reasons.push("Strong balance of urgency and effort");
+
+  return reasons.slice(0, 3);
 }

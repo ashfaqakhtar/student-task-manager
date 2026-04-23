@@ -3,11 +3,13 @@ export default function TodaySummary({
   plannedCount,
   totalPlannedMinutes,
   inProgressCount,
+  totalRecommendedMinutes,
 }) {
   const items = [
     { label: "Due today", value: dueTodayCount },
     { label: "Planned today", value: plannedCount },
     { label: "Planned minutes", value: totalPlannedMinutes },
+    { label: "Recommended mins", value: totalRecommendedMinutes },
     { label: "In progress", value: inProgressCount },
   ];
 

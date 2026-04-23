@@ -18,6 +18,30 @@ const sessionSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const syllabusTopicSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    text: { type: String, required: true, trim: true },
+    done: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
+const syllabusSchema = new mongoose.Schema(
+  {
+    mode: {
+      type: String,
+      enum: ["regular", "exam"],
+      required: true,
+    },
+    title: { type: String, default: "", trim: true },
+    examDate: { type: Date, default: null },
+    coverageNotes: { type: String, default: "", trim: true },
+    topics: [syllabusTopicSchema],
+  },
+  { _id: false },
+);
+
 const recurringSchema = new mongoose.Schema(
   {
     frequency: {
@@ -76,6 +100,7 @@ const taskSchema = new mongoose.Schema(
     notes: { type: String, default: "" },
     links: [{ type: String }],
     subtasks: [subtaskSchema],
+    syllabus: { type: syllabusSchema, default: null },
     sessions: [sessionSchema],
     recurring: { type: recurringSchema, default: null },
     completedAt: { type: Date, default: null },

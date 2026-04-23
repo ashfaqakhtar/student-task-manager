@@ -1,4 +1,6 @@
+import AnalyticsPanel from "./AnalyticsPanel";
 import DeadlineCard from "./DeadlineCard";
+import PlannerQuickActions from "./PlannerQuickActions";
 import StatsBar from "./StatsBar";
 import TaskList from "./TaskList";
 
@@ -26,6 +28,8 @@ export default function OverviewView(props) {
           ))}
         </div>
       </section>
+      <PlannerQuickActions onCreate={props.onCreatePlannerItem} />
+      <AnalyticsPanel analytics={props.analytics} />
       <TaskList {...props} tasks={filteredTasks} />
     </div>
   );

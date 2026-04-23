@@ -15,10 +15,10 @@ async function getTaskOrError(userId, taskId) {
   return task;
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, context) {
   try {
     const user = await requireUser();
-    const { id } = params;
+    const { id } = await context.params;
     const payload = await request.json();
     await connectDB();
     const task = await getTaskOrError(user._id, id);
@@ -51,10 +51,10 @@ export async function PATCH(request, { params }) {
   }
 }
 
-export async function DELETE(_, { params }) {
+export async function DELETE(_, context) {
   try {
     const user = await requireUser();
-    const { id } = params;
+    const { id } = await context.params;
     await connectDB();
     await Task.findOneAndDelete({ userId: user._id, publicId: id });
     return apiResponse({ success: true });

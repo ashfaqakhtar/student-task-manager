@@ -20,6 +20,7 @@ const EMPTY_FORM = {
   notes: "",
   links: [""],
   subtasks: [],
+  syllabus: null,
   recurring: null,
 };
 
@@ -34,6 +35,15 @@ export default function TaskForm({ initialTask, defaultStatus, subjects, onSubmi
     status: initialTask?.status || defaultStatus || "backlog",
     deadline: initialTask?.deadline ? initialTask.deadline.slice(0, 10) : "",
     scheduledDate: initialTask?.scheduledDate ? initialTask.scheduledDate.slice(0, 10) : "",
+    syllabus: initialTask?.syllabus
+      ? {
+          ...initialTask.syllabus,
+          examDate: initialTask.syllabus.examDate
+            ? initialTask.syllabus.examDate.slice(0, 10)
+            : "",
+          topics: initialTask.syllabus.topics || [],
+        }
+      : null,
   }));
   const [error, setError] = useState("");
   const titleRef = useRef(null);
@@ -43,6 +53,15 @@ export default function TaskForm({ initialTask, defaultStatus, subjects, onSubmi
   const subjectList = useMemo(() => subjects.filter(Boolean), [subjects]);
 
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const updateTaskType = (value) =>
+    setForm((current) => ({
+      ...current,
+      type: value,
+      syllabus:
+        value === "exam" && current.syllabus
+          ? { ...current.syllabus, mode: "exam" }
+          : current.syllabus,
+    }));
 
   return (
     <form
@@ -60,6 +79,15 @@ export default function TaskForm({ initialTask, defaultStatus, subjects, onSubmi
           estimatedMinutes: Number(form.estimatedMinutes),
           links: form.links.filter(Boolean),
           subtasks: form.subtasks.filter((subtask) => subtask.text.trim()),
+          syllabus: form.syllabus
+            ? {
+                ...form.syllabus,
+                examDate: form.syllabus.examDate
+                  ? new Date(form.syllabus.examDate).toISOString()
+                  : null,
+                topics: (form.syllabus.topics || []).filter((topic) => topic.text.trim()),
+              }
+            : null,
           sessions: initialTask?.sessions || [],
           createdAt: initialTask?.createdAt || new Date().toISOString(),
           completedAt: initialTask?.completedAt || null,
@@ -108,7 +136,7 @@ export default function TaskForm({ initialTask, defaultStatus, subjects, onSubmi
                     key={item}
                     label={item}
                     active={form.type === item}
-                    onClick={() => updateForm("type", item)}
+                    onClick={() => updateTaskType(item)}
                   />
                 ))}
               </div>
@@ -294,6 +322,162 @@ export default function TaskForm({ initialTask, defaultStatus, subjects, onSubmi
               </Button>
             </div>
           </div>
+        </FormSection>
+        <FormSection
+          title="Syllabus planning"
+          description="Track regular syllabus coverage or create an exam-focused syllabus checklist."
+        >
+          <div className="task-form__toggle-block">
+            <Toggle
+              checked={Boolean(form.syllabus)}
+              onChange={(checked) =>
+                updateForm(
+                  "syllabus",
+                  checked
+                    ? {
+                        mode: form.type === "exam" ? "exam" : "regular",
+                        title: "",
+                        examDate: "",
+                        coverageNotes: "",
+                        topics: [],
+                      }
+                    : null,
+                )
+              }
+              label="Attach syllabus plan"
+            />
+          </div>
+          {form.syllabus ? (
+            <div className="form-grid">
+              <div>
+                <span>Syllabus mode</span>
+                <div className="segment-row">
+                  {["regular", "exam"].map((item) => (
+                    <Segment
+                      key={item}
+                      label={item}
+                      active={form.syllabus?.mode === item}
+                      onClick={() =>
+                        updateForm("syllabus", {
+                          ...form.syllabus,
+                          mode: item,
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+              <label>
+                <span>{form.syllabus.mode === "exam" ? "Exam name" : "Syllabus title"}</span>
+                <Input
+                  value={form.syllabus.title}
+                  onChange={(event) =>
+                    updateForm("syllabus", {
+                      ...form.syllabus,
+                      title: event.target.value,
+                    })
+                  }
+                  placeholder={
+                    form.syllabus.mode === "exam"
+                      ? "Semester final exam"
+                      : "Unit 3: Database normalization"
+                  }
+                />
+              </label>
+              {form.syllabus.mode === "exam" ? (
+                <label>
+                  <span>Exam date</span>
+                  <Input
+                    type="date"
+                    value={form.syllabus.examDate || ""}
+                    onChange={(event) =>
+                      updateForm("syllabus", {
+                        ...form.syllabus,
+                        examDate: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+              ) : (
+                <div />
+              )}
+              <label className="form-grid__full task-form__notes">
+                <span>
+                  {form.syllabus.mode === "exam" ? "Exam syllabus scope" : "Coverage notes"}
+                </span>
+                <textarea
+                  className="textarea"
+                  rows="4"
+                  value={form.syllabus.coverageNotes}
+                  onChange={(event) =>
+                    updateForm("syllabus", {
+                      ...form.syllabus,
+                      coverageNotes: event.target.value,
+                    })
+                  }
+                  placeholder={
+                    form.syllabus.mode === "exam"
+                      ? "Units 1-5, important questions, practical topics, and revision focus."
+                      : "Topic summary, classroom pace, chapter references, or reading targets."
+                  }
+                />
+              </label>
+              <div className="form-grid__full">
+                <span>
+                  {form.syllabus.mode === "exam" ? "Exam checklist topics" : "Regular syllabus topics"}
+                </span>
+                <div className="stack-list">
+                  {form.syllabus.topics.map((topic, index) => (
+                    <div key={topic.id} className="list-row">
+                      <Input
+                        value={topic.text}
+                        onChange={(event) =>
+                          updateForm("syllabus", {
+                            ...form.syllabus,
+                            topics: form.syllabus.topics.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, text: event.target.value } : item,
+                            ),
+                          })
+                        }
+                        placeholder={
+                          form.syllabus.mode === "exam"
+                            ? "Long answer questions from Unit 2"
+                            : "Complete Chapter 4 lecture notes"
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          updateForm("syllabus", {
+                            ...form.syllabus,
+                            topics: form.syllabus.topics.filter((_, itemIndex) => itemIndex !== index),
+                          })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    updateForm("syllabus", {
+                      ...form.syllabus,
+                      topics: [
+                        ...form.syllabus.topics,
+                        { id: nanoid(), text: "", done: false },
+                      ],
+                    })
+                  }
+                >
+                  Add syllabus topic
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </FormSection>
         <FormSection
           title="Context"

@@ -8,6 +8,7 @@ import {
   subDays,
 } from "date-fns";
 import { useTaskStore } from "../store/taskStore";
+import { analyzeTasks } from "../utils/analytics";
 import { getUrgency, priorityOrder, urgencyOrder } from "../utils/urgency";
 import { isTaskOnDay } from "../utils/dates";
 
@@ -91,6 +92,7 @@ export function useTasks(filters, sortBy) {
     );
     const studyHoursThisWeek =
       sessionsThisWeek.reduce((sum, session) => sum + session.durationMinutes, 0) / 60;
+    const analytics = analyzeTasks(tasks);
 
     return {
       tasks,
@@ -109,6 +111,7 @@ export function useTasks(filters, sortBy) {
       upcomingTasks: upcoming,
       studyHoursThisWeek,
       sessionsThisWeekCount: sessionsThisWeek.length,
+      analytics,
       getTasksForDay: (day) => tasks.filter((task) => isTaskOnDay(task, day)),
     };
   }, [filters, sortBy, tasks]);

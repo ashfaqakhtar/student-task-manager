@@ -3,10 +3,10 @@ import User from "../../../../../../src/auth/model/User.model.js";
 import { apiError, apiResponse } from "../../../../../../src/auth/utils/api.js";
 import { requireAdmin } from "../../../../../../src/auth/utils/session.js";
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, context) {
   try {
     const admin = await requireAdmin();
-    const { id } = params;
+    const { id } = await context.params;
     const { role } = await request.json();
     if (!["user", "admin"].includes(role)) {
       return apiError("Invalid role.", 400);

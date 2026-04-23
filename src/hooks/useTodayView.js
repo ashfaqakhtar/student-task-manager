@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { isSameDay, parseISO, startOfToday } from "date-fns";
 import { useTaskStore } from "../store/taskStore";
 import { getUrgency } from "../utils/urgency";
-import { isQuickWin, rankTasks } from "../utils/taskRanking";
+import { getRecommendationReasons, isQuickWin, rankTasks } from "../utils/taskRanking";
 
 export function useTodayView() {
   const tasks = useTaskStore((state) => state.tasks);
@@ -16,7 +16,12 @@ export function useTodayView() {
     const dueToday = activeTasks.filter((task) => getUrgency(task.deadline) === "today");
     const inProgress = activeTasks.filter((task) => task.status === "in-progress");
     const quickWins = rankTasks(activeTasks.filter(isQuickWin)).slice(0, 4);
-    const recommended = rankTasks(activeTasks).slice(0, 3);
+    const recommended = rankTasks(activeTasks)
+      .slice(0, 3)
+      .map((task) => ({
+        ...task,
+        recommendationReasons: getRecommendationReasons(task),
+      }));
     const totalPlannedMinutes = plannedToday.reduce(
       (sum, task) => sum + Number(task.estimatedMinutes || 0),
       0,

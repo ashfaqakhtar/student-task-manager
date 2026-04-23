@@ -9,6 +9,7 @@ export default function TodayView({ data, colors, onFocus }) {
         dueTodayCount={data.dueToday.length}
         plannedCount={data.plannedToday.length}
         totalPlannedMinutes={data.totalPlannedMinutes}
+        totalRecommendedMinutes={data.totalRecommendedMinutes}
         inProgressCount={data.inProgress.length}
       />
       <RecommendedTasks tasks={data.recommended} colors={colors} onFocus={onFocus} />

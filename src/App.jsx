@@ -27,6 +27,67 @@ const DEFAULT_FILTERS = {
   type: "",
 };
 
+function getPlannerTemplate(kind) {
+  if (kind === "syllabus") {
+    return {
+      defaultStatus: "backlog",
+      initialTask: {
+        title: "Syllabus plan",
+        type: "revision",
+        priority: "medium",
+        estimatedMinutes: 90,
+        notes: "Add units, chapters, and coverage notes for this subject.",
+        syllabus: {
+          mode: "regular",
+          title: "",
+          examDate: "",
+          coverageNotes: "",
+          topics: [],
+        },
+      },
+    };
+  }
+
+  if (kind === "class-routine") {
+    return {
+      defaultStatus: "this-week",
+      initialTask: {
+        title: "Class routine",
+        type: "revision",
+        priority: "medium",
+        estimatedMinutes: 60,
+        recurring: { frequency: "weekly" },
+        notes:
+          "Use this task to track your weekly class timing, lecture flow, and follow-up study blocks.",
+        subtasks: [
+          { id: "monday-class", text: "Monday class schedule", done: false },
+          { id: "midweek-review", text: "Mid-week review block", done: false },
+          { id: "friday-wrap", text: "Friday wrap-up", done: false },
+        ],
+      },
+    };
+  }
+
+  return {
+    defaultStatus: "this-week",
+    initialTask: {
+      title: "Exam routine",
+      type: "exam",
+      priority: "high",
+      estimatedMinutes: 120,
+      notes:
+        "Break this exam routine into revision blocks, priority units, and mock-test checkpoints.",
+      syllabus: {
+        mode: "exam",
+        title: "",
+        examDate: "",
+        coverageNotes: "",
+        topics: [],
+      },
+    },
+  };
+}
+
 export default function App() {
   const searchRef = useRef(null);
   const [view, setView] = useState("overview");
@@ -34,7 +95,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState("smart");
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
-  const [newTaskStatus, setNewTaskStatus] = useState("");
+  const [newTaskConfig, setNewTaskConfig] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [focusTask, setFocusTask] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -59,6 +120,7 @@ export default function App() {
     updateTask,
     deleteTask,
     toggleSubtask,
+    toggleSyllabusTopic,
     addSession,
     completeTask,
     reorderTasks,
@@ -83,9 +145,9 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.target.matches("input, textarea, select")) return;
-      if (event.key === "n") setNewTaskStatus("backlog");
+      if (event.key === "n") setNewTaskConfig({ defaultStatus: "backlog" });
       if (event.key === "Escape") {
-        setNewTaskStatus("");
+        setNewTaskConfig(null);
         setEditingTask(null);
         setFocusTask(null);
       }
@@ -134,7 +196,7 @@ export default function App() {
     if (preset) setFilters(preset.filters);
   };
   const shouldShowTaskEmptyState =
-    !tasks.length && ["overview", "today", "board", "calendar"].includes(view);
+    !tasks.length && ["today", "board", "calendar"].includes(view);
 
   return (
     <div className="app-shell">
@@ -163,7 +225,7 @@ export default function App() {
           }}
           onOpenChangePassword={() => setShowChangePassword(true)}
         />
-        <TopBar view={view} onNewTask={() => setNewTaskStatus("backlog")} />
+        <TopBar view={view} onNewTask={() => setNewTaskConfig({ defaultStatus: "backlog" })} />
         {shouldShowTaskEmptyState ? (
           <div className="empty-state">
             <h2>No tasks yet. Press N to add your first one.</h2>
@@ -176,7 +238,7 @@ export default function App() {
             onFocus={(task) => setFocusTask(task)}
           />
         ) : null}
-        {view === "overview" && tasks.length ? (
+        {view === "overview" ? (
           <OverviewView
             {...taskData}
             filteredTasks={taskData.filteredTasks}
@@ -191,6 +253,7 @@ export default function App() {
               setFilters((current) => ({ ...current, [key]: value }));
               dismissShortcutHint();
             }}
+            onCreatePlannerItem={(kind) => setNewTaskConfig(getPlannerTemplate(kind))}
             onSortChange={setSortBy}
             onClear={() => setFilters(DEFAULT_FILTERS)}
             onSaveView={() => {
@@ -199,6 +262,7 @@ export default function App() {
             }}
             onFocus={(task) => setFocusTask(task)}
             onToggleSubtask={toggleSubtask}
+            onToggleSyllabusTopic={toggleSyllabusTopic}
             showShortcutHint={!prefs.shortcutHintDismissed}
             onDismissShortcutHint={dismissShortcutHint}
           />
@@ -207,7 +271,7 @@ export default function App() {
           <KanbanBoard
             tasks={tasks}
             colors={subjectColorMap}
-            onQuickAdd={setNewTaskStatus}
+            onQuickAdd={(status) => setNewTaskConfig({ defaultStatus: status })}
             onFocus={setFocusTask}
             onComplete={completeTask}
             onEdit={setEditingTask}
@@ -234,15 +298,16 @@ export default function App() {
         ) : null}
         <div className="shortcut-bar">N new task / T today / search / B board / O overview / C calendar / F focus / Esc close</div>
       </PageWrapper>
-      {newTaskStatus ? (
+      {newTaskConfig ? (
         <NewTaskModal
           subjects={subjects.map((subject) => subject.name)}
-          defaultStatus={newTaskStatus}
+          defaultStatus={newTaskConfig.defaultStatus}
+          initialTask={newTaskConfig.initialTask}
           onSubmit={(task) => {
             addTask(task);
-            setNewTaskStatus("");
+            setNewTaskConfig(null);
           }}
-          onClose={() => setNewTaskStatus("")}
+          onClose={() => setNewTaskConfig(null)}
         />
       ) : null}
       {editingTask ? (

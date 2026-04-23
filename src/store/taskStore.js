@@ -24,6 +24,7 @@ function normalizeTask(task) {
     notes: task.notes || "",
     links: task.links || [],
     subtasks: task.subtasks || [],
+    syllabus: task.syllabus || null,
     sessions: task.sessions || [],
   };
 }
@@ -235,6 +236,19 @@ export const useTaskStore = create((set, get) => ({
       subtask.id === subtaskId ? { ...subtask, done: !subtask.done } : subtask,
     );
     await get().updateTask(taskId, { subtasks });
+  },
+  toggleSyllabusTopic: async (taskId, topicId) => {
+    const task = get().tasks.find((item) => item.id === taskId);
+    if (!task?.syllabus) return;
+    const topics = (task.syllabus.topics || []).map((topic) =>
+      topic.id === topicId ? { ...topic, done: !topic.done } : topic,
+    );
+    await get().updateTask(taskId, {
+      syllabus: {
+        ...task.syllabus,
+        topics,
+      },
+    });
   },
   addSession: async (taskId, session) => {
     const task = get().tasks.find((item) => item.id === taskId);

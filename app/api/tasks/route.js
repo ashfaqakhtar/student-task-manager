@@ -39,6 +39,7 @@ export async function POST(request) {
       notes: payload.notes,
       links: payload.links,
       subtasks: payload.subtasks,
+      syllabus: payload.syllabus,
       sessions: payload.sessions,
       recurring: payload.recurring,
       completedAt: payload.completedAt,

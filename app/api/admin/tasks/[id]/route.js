@@ -3,10 +3,10 @@ import Task from "../../../../../src/auth/model/Task.model.js";
 import { apiError, apiResponse } from "../../../../../src/auth/utils/api.js";
 import { requireAdmin } from "../../../../../src/auth/utils/session.js";
 
-export async function DELETE(_, { params }) {
+export async function DELETE(_, context) {
   try {
     await requireAdmin();
-    const { id } = params;
+    const { id } = await context.params;
     await connectDB();
     await Task.findOneAndDelete({ publicId: id });
     return apiResponse({ success: true });

@@ -26,6 +26,15 @@ export function serializeTask(task) {
     notes: task.notes || "",
     links: task.links || [],
     subtasks: task.subtasks || [],
+    syllabus: task.syllabus
+      ? {
+          mode: task.syllabus.mode,
+          title: task.syllabus.title || "",
+          examDate: task.syllabus.examDate ? new Date(task.syllabus.examDate).toISOString() : null,
+          coverageNotes: task.syllabus.coverageNotes || "",
+          topics: task.syllabus.topics || [],
+        }
+      : null,
     sessions: (task.sessions || []).map((session) => ({
       ...session,
       startedAt: new Date(session.startedAt).toISOString(),
