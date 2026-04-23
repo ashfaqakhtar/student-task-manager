@@ -19,7 +19,10 @@ export default function Sidebar({
   sessionsThisWeekCount,
   theme,
   onThemeChange,
+  isAdmin,
 }) {
+  const navItems = isAdmin ? [...NAV_ITEMS, { id: "admin", label: "Admin" }] : NAV_ITEMS;
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -27,7 +30,7 @@ export default function Sidebar({
         <span className="sidebar__subtitle">{name || "Student"}</span>
       </div>
       <nav className="sidebar__nav">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <button
             key={item.id}
             className={`sidebar__link ${currentView === item.id ? "is-active" : ""}`}

@@ -9,9 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.2",
     "nanoid": "^5.1.5",
     "next": "^16.0.1",
+    "nodemailer": "^7.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zustand": "^5.0.8"

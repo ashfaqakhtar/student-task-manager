@@ -4,14 +4,13 @@ import { create } from "zustand";
 import { readLocalStorage, writeLocalStorage } from "../hooks/useLocalStorage";
 import { getNextRecurringDate } from "../utils/dates";
 import { getNextSubjectColor } from "../utils/subjectColors";
+import { apiClient } from "../utils/apiClient";
 
-export const TASKS_KEY = "ssp_tasks";
 export const SUBJECT_COLORS_KEY = "ssp_subject_colors";
 export const PREFS_KEY = "ssp_prefs";
 
 export const defaultPrefs = {
   theme: "light",
-  name: "",
   savedViews: [],
   shortcutHintDismissed: false,
 };
@@ -19,6 +18,7 @@ export const defaultPrefs = {
 function normalizeTask(task) {
   return {
     ...task,
+    id: task.id || nanoid(),
     scheduledDate: task.scheduledDate || null,
     effort: task.effort || "medium",
     notes: task.notes || "",
@@ -28,9 +28,16 @@ function normalizeTask(task) {
   };
 }
 
-function persist(get) {
-  const { tasks, prefs, subjectColorMap } = get();
-  writeLocalStorage(TASKS_KEY, tasks);
+function buildSubjectColorMap(tasks, persistedMap) {
+  return tasks.reduce((map, task) => {
+    if (!task.subject) return map;
+    if (map[task.subject]) return map;
+    return { ...map, [task.subject]: getNextSubjectColor(map) };
+  }, persistedMap);
+}
+
+function persistLocalState(get) {
+  const { prefs, subjectColorMap } = get();
   writeLocalStorage(PREFS_KEY, prefs);
   writeLocalStorage(SUBJECT_COLORS_KEY, subjectColorMap);
 }
@@ -57,74 +64,51 @@ function cloneRecurringTask(task) {
   };
 }
 
-function ensureRecurringTasks(tasks) {
-  const taskList = tasks.map(normalizeTask);
-
-  tasks.forEach((task) => {
-    if (!task.recurring || !task.completedAt || !task.deadline) return;
-
-    let nextDate = getNextRecurringDate(task);
-    while (nextDate && nextDate < new Date()) {
-      const existingFutureTask = taskList.find(
-        (candidate) =>
-          candidate.title === task.title &&
-          candidate.subject === task.subject &&
-          candidate.type === task.type &&
-          candidate.deadline === nextDate.toISOString(),
-      );
-
-      if (!existingFutureTask) {
-        const nextTask = normalizeTask({
-          ...cloneRecurringTask({ ...normalizeTask(task), deadline: nextDate.toISOString() }),
-        });
-        taskList.push(nextTask);
-      }
-
-      nextDate = task.recurring.frequency === "daily"
-        ? addDays(nextDate, 1)
-        : addWeeks(nextDate, 1);
-    }
-  });
-
-  return taskList;
-}
-
-function buildSubjectColorMap(tasks, persistedMap) {
-  return tasks.reduce((map, task) => {
-    if (!task.subject) return map;
-    if (map[task.subject]) return map;
-    return { ...map, [task.subject]: getNextSubjectColor(map) };
-  }, persistedMap);
-}
-
 export const useTaskStore = create((set, get) => ({
   tasks: [],
   prefs: defaultPrefs,
   subjectColorMap: {},
   hydrated: false,
-  initializeStore: () => {
-    const tasks = ensureRecurringTasks(readLocalStorage(TASKS_KEY, []));
+  user: null,
+  authEmail: "",
+  authMode: "login",
+  adminData: { users: [], tasks: [] },
+  initializeStore: async () => {
     const prefs = { ...defaultPrefs, ...readLocalStorage(PREFS_KEY, defaultPrefs) };
-    const subjectColorMap = buildSubjectColorMap(
-      tasks,
-      readLocalStorage(SUBJECT_COLORS_KEY, {}),
-    );
-    set({ tasks, prefs, subjectColorMap, hydrated: true });
-    persist(get);
+    const persistedColorMap = readLocalStorage(SUBJECT_COLORS_KEY, {});
+    set({ prefs, subjectColorMap: persistedColorMap });
+
+    try {
+      const auth = await apiClient("/api/auth/me", { method: "GET" });
+      const user = auth.user;
+      if (user) {
+        const taskResponse = await apiClient("/api/tasks", { method: "GET" });
+        const tasks = taskResponse.tasks.map(normalizeTask);
+        set({
+          user,
+          tasks,
+          subjectColorMap: buildSubjectColorMap(tasks, persistedColorMap),
+          hydrated: true,
+        });
+      } else {
+        set({ user: null, tasks: [], hydrated: true });
+      }
+    } catch (error) {
+      console.error("Failed to initialize app state", error);
+      set({ user: null, tasks: [], hydrated: true });
+    }
+
+    persistLocalState(get);
   },
   setTheme: (theme) => {
     set((state) => ({ prefs: { ...state.prefs, theme } }));
-    persist(get);
-  },
-  setName: (name) => {
-    set((state) => ({ prefs: { ...state.prefs, name } }));
-    persist(get);
+    persistLocalState(get);
   },
   dismissShortcutHint: () => {
     set((state) => ({
       prefs: { ...state.prefs, shortcutHintDismissed: true },
     }));
-    persist(get);
+    persistLocalState(get);
   },
   saveViewPreset: (preset) => {
     set((state) => ({
@@ -136,7 +120,7 @@ export const useTaskStore = create((set, get) => ({
         ],
       },
     }));
-    persist(get);
+    persistLocalState(get);
   },
   ensureSubjectColor: (subject) => {
     if (!subject) return null;
@@ -147,87 +131,147 @@ export const useTaskStore = create((set, get) => ({
     set((state) => ({
       subjectColorMap: { ...state.subjectColorMap, [trimmed]: color },
     }));
-    persist(get);
+    persistLocalState(get);
     return color;
   },
-  addTask: (task) => {
+  registerUser: async (payload) => {
+    const response = await apiClient("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    set({ authEmail: response.email, authMode: "verify" });
+    return response;
+  },
+  verifyOtp: async (payload) => {
+    const response = await apiClient("/api/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const user = response.user;
+    set({ user, authEmail: "", authMode: "login" });
+    const taskResponse = await apiClient("/api/tasks", { method: "GET" });
+    const tasks = taskResponse.tasks.map(normalizeTask);
+    set((state) => ({
+      tasks,
+      subjectColorMap: buildSubjectColorMap(tasks, state.subjectColorMap),
+    }));
+    persistLocalState(get);
+    return response;
+  },
+  loginUser: async (payload) => {
+    const response = await apiClient("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const user = response.user;
+    const taskResponse = await apiClient("/api/tasks", { method: "GET" });
+    const tasks = taskResponse.tasks.map(normalizeTask);
+    set((state) => ({
+      user,
+      tasks,
+      subjectColorMap: buildSubjectColorMap(tasks, state.subjectColorMap),
+      authMode: "login",
+      authEmail: "",
+    }));
+    persistLocalState(get);
+    return response;
+  },
+  logoutUser: async () => {
+    await apiClient("/api/auth/logout", { method: "POST" });
+    set({ user: null, tasks: [], adminData: { users: [], tasks: [] } });
+  },
+  changePassword: async (payload) => {
+    return apiClient("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  setAuthMode: (authMode) => set({ authMode }),
+  setAuthEmail: (authEmail) => set({ authEmail }),
+  fetchTasks: async () => {
+    const response = await apiClient("/api/tasks", { method: "GET" });
+    const tasks = response.tasks.map(normalizeTask);
+    set((state) => ({
+      tasks,
+      subjectColorMap: buildSubjectColorMap(tasks, state.subjectColorMap),
+    }));
+    persistLocalState(get);
+  },
+  addTask: async (task) => {
     get().ensureSubjectColor(task.subject);
-    set((state) => ({ tasks: [normalizeTask(task), ...state.tasks] }));
-    persist(get);
+    const response = await apiClient("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify(task),
+    });
+    set((state) => ({ tasks: [normalizeTask(response.task), ...state.tasks] }));
+    persistLocalState(get);
   },
-  updateTask: (taskId, updates) => {
+  updateTask: async (taskId, updates) => {
     if (updates.subject) get().ensureSubjectColor(updates.subject);
-    set((state) => ({
-      tasks: state.tasks.map((task) =>
-        task.id === taskId ? normalizeTask({ ...task, ...updates }) : task,
-      ),
-    }));
-    persist(get);
-  },
-  deleteTask: (taskId) => {
-    set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
-    persist(get);
-  },
-  toggleSubtask: (taskId, subtaskId) => {
-    set((state) => ({
-      tasks: state.tasks.map((task) =>
-        task.id !== taskId
-          ? task
-          : {
-              ...task,
-              subtasks: task.subtasks.map((subtask) =>
-                subtask.id === subtaskId
-                  ? { ...subtask, done: !subtask.done }
-                  : subtask,
-              ),
-            },
-      ),
-    }));
-    persist(get);
-  },
-  addSession: (taskId, session) => {
-    set((state) => ({
-      tasks: state.tasks.map((task) =>
-        task.id === taskId
-          ? { ...task, sessions: [...task.sessions, session] }
-          : task,
-      ),
-    }));
-    persist(get);
-  },
-  completeTask: (taskId) => {
-    let createdRecurringTask = null;
+    const response = await apiClient(`/api/tasks/${taskId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
     set((state) => ({
       tasks: state.tasks.flatMap((task) => {
         if (task.id !== taskId) return [task];
-        const completedTask = {
-          ...task,
-          status: "completed",
-          completedAt: new Date().toISOString(),
-        };
-        if (task.recurring) {
-          createdRecurringTask = cloneRecurringTask(completedTask);
-        }
-        return createdRecurringTask ? [completedTask, createdRecurringTask] : [completedTask];
+        const base = normalizeTask(response.task);
+        const recurringTask = response.recurringTask
+          ? [normalizeTask(response.recurringTask)]
+          : [];
+        return [base, ...recurringTask];
       }),
     }));
-    persist(get);
+    persistLocalState(get);
   },
-  reorderTasks: ({ taskId, targetStatus, beforeTaskId }) => {
-    if (beforeTaskId === taskId) return;
-    const tasks = [...get().tasks];
-    const sourceIndex = tasks.findIndex((task) => task.id === taskId);
-    if (sourceIndex === -1) {
-      console.error("Unable to reorder task: source not found", taskId);
-      return;
-    }
-    const [movedTask] = tasks.splice(sourceIndex, 1);
-    movedTask.status = targetStatus;
-    const insertIndex = beforeTaskId
-      ? tasks.findIndex((task) => task.id === beforeTaskId)
-      : tasks.findLastIndex((task) => task.status === targetStatus) + 1;
-    tasks.splice(insertIndex < 0 ? tasks.length : insertIndex, 0, movedTask);
+  deleteTask: async (taskId) => {
+    await apiClient(`/api/tasks/${taskId}`, { method: "DELETE" });
+    set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
+  },
+  toggleSubtask: async (taskId, subtaskId) => {
+    const task = get().tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    const subtasks = task.subtasks.map((subtask) =>
+      subtask.id === subtaskId ? { ...subtask, done: !subtask.done } : subtask,
+    );
+    await get().updateTask(taskId, { subtasks });
+  },
+  addSession: async (taskId, session) => {
+    const task = get().tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    await get().updateTask(taskId, { sessions: [...task.sessions, session] });
+  },
+  completeTask: async (taskId) => {
+    const task = get().tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    await get().updateTask(taskId, {
+      status: "completed",
+      completedAt: new Date().toISOString(),
+    });
+  },
+  reorderTasks: async ({ taskId, targetStatus }) => {
+    const response = await apiClient("/api/tasks/reorder", {
+      method: "POST",
+      body: JSON.stringify({ taskId, targetStatus }),
+    });
+    const tasks = response.tasks.map(normalizeTask);
     set({ tasks });
-    persist(get);
   },
+  loadAdminOverview: async () => {
+    const response = await apiClient("/api/admin/overview", { method: "GET" });
+    set({ adminData: response });
+  },
+  updateUserRole: async (userId, role) => {
+    await apiClient(`/api/admin/users/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+    await get().loadAdminOverview();
+  },
+  deleteTaskAsAdmin: async (taskId) => {
+    await apiClient(`/api/admin/tasks/${taskId}`, { method: "DELETE" });
+    await get().loadAdminOverview();
+    await get().fetchTasks();
+  },
+  createLocalRecurringTask: cloneRecurringTask,
 }));

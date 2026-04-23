@@ -6,6 +6,10 @@ import { useTasks } from "./hooks/useTasks";
 import { useTodayView } from "./hooks/useTodayView";
 import { useSubjectColors } from "./hooks/useSubjectColors";
 import PageWrapper from "./components/Layout/PageWrapper";
+import AuthScreen from "./components/Auth/AuthScreen";
+import AdminView from "./components/Admin/AdminView";
+import ChangePasswordModal from "./components/Layout/ChangePasswordModal";
+import Navbar from "./components/Layout/Navbar";
 import Sidebar from "./components/Layout/Sidebar";
 import TopBar from "./components/Layout/TopBar";
 import OverviewView from "./components/Overview/OverviewView";
@@ -15,9 +19,6 @@ import CalendarGrid from "./components/Calendar/CalendarGrid";
 import FocusModal from "./components/Focus/FocusModal";
 import NewTaskModal from "./components/Task/NewTaskModal";
 import EditTaskModal from "./components/Task/EditTaskModal";
-import Button from "./components/UI/Button";
-import Input from "./components/UI/Input";
-
 const DEFAULT_FILTERS = {
   search: "",
   subject: "",
@@ -25,19 +26,6 @@ const DEFAULT_FILTERS = {
   priority: "",
   type: "",
 };
-
-function NameGate({ onSubmit }) {
-  const [value, setValue] = useState("");
-  return (
-    <div className="name-gate">
-      <div className="name-gate__card">
-        <h1>What should we call you?</h1>
-        <Input value={value} onChange={(event) => setValue(event.target.value)} />
-        <Button onClick={() => value.trim() && onSubmit(value.trim())}>Let&apos;s go</Button>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const searchRef = useRef(null);
@@ -49,14 +37,24 @@ export default function App() {
   const [newTaskStatus, setNewTaskStatus] = useState("");
   const [editingTask, setEditingTask] = useState(null);
   const [focusTask, setFocusTask] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const {
     hydrated,
     prefs,
     tasks,
+    user,
+    authEmail,
+    authMode,
+    adminData,
     initializeStore,
     setTheme,
-    setName,
+    setAuthMode,
+    registerUser,
+    verifyOtp,
+    loginUser,
+    logoutUser,
+    changePassword,
     addTask,
     updateTask,
     deleteTask,
@@ -66,6 +64,9 @@ export default function App() {
     reorderTasks,
     saveViewPreset,
     dismissShortcutHint,
+    loadAdminOverview,
+    updateUserRole,
+    deleteTaskAsAdmin,
   } = useTaskStore();
   const { subjectColorMap, getSubjectColor } = useSubjectColors();
   const taskData = useTasks(filters, sortBy);
@@ -115,17 +116,30 @@ export default function App() {
   );
 
   if (!hydrated) return null;
-  if (!prefs.name) return <NameGate onSubmit={setName} />;
+  if (!user) {
+    return (
+      <AuthScreen
+        mode={authMode}
+        pendingEmail={authEmail}
+        onModeChange={setAuthMode}
+        onRegister={registerUser}
+        onLogin={loginUser}
+        onVerifyOtp={verifyOtp}
+      />
+    );
+  }
 
   const applyPreset = (presetName) => {
     const preset = prefs.savedViews.find((item) => item.name === presetName);
     if (preset) setFilters(preset.filters);
   };
+  const shouldShowTaskEmptyState =
+    !tasks.length && ["overview", "today", "board", "calendar"].includes(view);
 
   return (
     <div className="app-shell">
       <Sidebar
-        name={prefs.name}
+        name={user.name}
         currentView={view}
         onChangeView={setView}
         subjects={subjects}
@@ -138,10 +152,19 @@ export default function App() {
         sessionsThisWeekCount={taskData.sessionsThisWeekCount}
         theme={prefs.theme}
         onThemeChange={setTheme}
+        isAdmin={user.role === "admin"}
       />
       <PageWrapper>
+        <Navbar
+          user={user}
+          onLogout={async () => {
+            await logoutUser();
+            setView("overview");
+          }}
+          onOpenChangePassword={() => setShowChangePassword(true)}
+        />
         <TopBar view={view} onNewTask={() => setNewTaskStatus("backlog")} />
-        {!tasks.length ? (
+        {shouldShowTaskEmptyState ? (
           <div className="empty-state">
             <h2>No tasks yet. Press N to add your first one.</h2>
           </div>
@@ -201,6 +224,14 @@ export default function App() {
             onSelectDay={setSelectedDay}
           />
         ) : null}
+        {view === "admin" && user.role === "admin" ? (
+          <AdminView
+            data={adminData}
+            onLoad={loadAdminOverview}
+            onUpdateRole={updateUserRole}
+            onDeleteTask={deleteTaskAsAdmin}
+          />
+        ) : null}
         <div className="shortcut-bar">N new task / T today / search / B board / O overview / C calendar / F focus / Esc close</div>
       </PageWrapper>
       {newTaskStatus ? (
@@ -234,6 +265,12 @@ export default function App() {
           onToggleSubtask={toggleSubtask}
           onNotesSave={(taskId, notes) => updateTask(taskId, { notes })}
           onLogSession={addSession}
+        />
+      ) : null}
+      {showChangePassword ? (
+        <ChangePasswordModal
+          onClose={() => setShowChangePassword(false)}
+          onSubmit={changePassword}
         />
       ) : null}
     </div>

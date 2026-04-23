@@ -1,40 +1,41 @@
 import nodemailer from "nodemailer";
 
-const sendVerificationMail = async (userEmail, token) => {
-    try {
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: process.env.EMAIL_SECURE === "true", // ✅ ensure boolean
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
+function createTransporter() {
+  const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS } = process.env;
+  if (!EMAIL_HOST || !EMAIL_PORT || !EMAIL_USER || !EMAIL_PASS) {
+    throw new Error("Email server environment variables are missing");
+  }
 
-        const verificationUrl = `${process.env.BASE_URL}/api/v1/users/verify/${token}`;
+  return nodemailer.createTransport({
+    host: EMAIL_HOST,
+    port: Number(EMAIL_PORT),
+    secure: process.env.EMAIL_SECURE === "true",
+    auth: {
+      user: EMAIL_USER,
+      pass: EMAIL_PASS,
+    },
+  });
+}
 
-        const mailOptions = {
-            from: `"Email Verification | Ashfaq Akhtar" <${process.env.SENDER_EMAIL}>`,
-            to: userEmail,
-            subject: "Verify your email - Mindclaire",
-            text: `Thank you for registering! Please verify your account using the link: ${verificationUrl}. This link expires in 10 minutes.`,
-            html: `
-        <p>Hello,</p>
-        <p>Thank you for registering with Mindclaire.</p>
-        <p>Please verify your email by clicking the link below. This link will expire in 10 minutes:</p>
-        <a href="${verificationUrl}">${verificationUrl}</a>
-        <p>If you did not request this, you can safely ignore this email.</p>
-      `,
-        };
+export default async function sendOtpMail({ email, name, otp, purpose }) {
+  const transporter = createTransporter();
+  const appName = "Smart Study Planner";
+  const preview = purpose === "verify" ? "Verify your account" : "Confirm your identity";
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`✅ Verification email sent to: ${userEmail}`);
-        return true;
-    } catch (error) {
-        console.error("❌ Error sending verification email:", error.message);
-        return false;
-    }
-};
-
-export default sendVerificationMail;
+  await transporter.sendMail({
+    from: process.env.SENDER_EMAIL || process.env.EMAIL_USER,
+    to: email,
+    subject: `${preview} • ${appName}`,
+    text: `Hello ${name}, your ${appName} OTP is ${otp}. It expires in 10 minutes.`,
+    html: `
+      <div style="font-family: Inter, Arial, sans-serif; padding: 24px; color: #171722;">
+        <h2 style="margin: 0 0 8px;">${appName}</h2>
+        <p style="margin: 0 0 20px;">Hello ${name}, use this one-time passcode to continue.</p>
+        <div style="font-size: 32px; font-weight: 700; letter-spacing: 0.2em; margin: 0 0 16px;">
+          ${otp}
+        </div>
+        <p style="margin: 0; color: #5d5b6f;">This code expires in 10 minutes.</p>
+      </div>
+    `,
+  });
+}
