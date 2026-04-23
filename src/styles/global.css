@@ -259,6 +259,7 @@ a {
 .navbar__brand {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .navbar__brand strong {
@@ -273,6 +274,7 @@ a {
 
 .navbar__profile {
   position: relative;
+  min-width: 0;
 }
 
 .navbar__profile-trigger {
@@ -280,6 +282,7 @@ a {
   align-items: center;
   gap: 10px;
   min-height: 48px;
+  min-width: 0;
   padding: 0 12px;
   border-radius: 14px;
   border: 1px solid var(--border);
@@ -302,6 +305,20 @@ a {
   display: grid;
   text-align: left;
   gap: 2px;
+  min-width: 0;
+}
+
+.navbar__identity strong,
+.navbar__identity span,
+.navbar__brand strong,
+.navbar__brand span,
+.task-row strong,
+.task-row__links a,
+.planner-action-card p,
+.analytics-panel__explanation,
+.admin-table__row strong,
+.admin-table__row span {
+  overflow-wrap: anywhere;
 }
 
 .navbar__menu {
@@ -474,6 +491,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
@@ -512,6 +531,7 @@ a {
 
 .deadline-card__body strong {
   font-size: 15px;
+  overflow-wrap: anywhere;
 }
 
 .deadline-card:hover {
@@ -690,6 +710,7 @@ a {
 
 .task-row__focus {
   opacity: 0;
+  justify-self: end;
 }
 
 .task-row:hover .task-row__focus {
@@ -712,7 +733,7 @@ a {
 
 .subtask-list__item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -1315,6 +1336,18 @@ a {
   border-top: 1px solid var(--border);
 }
 
+.focus-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.focus-modal__header p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1704,6 +1737,11 @@ a {
     align-items: stretch;
   }
 
+  .task-toolbar__meta,
+  .task-toolbar__actions {
+    width: 100%;
+  }
+
   .auth-card {
     grid-template-columns: 1fr;
   }
@@ -1767,6 +1805,10 @@ a {
   .navbar {
     padding: 12px 14px;
   }
+
+  .navbar__menu {
+    width: min(240px, 100%);
+  }
 }
 
 @media (max-width: 900px) {
@@ -1814,6 +1856,15 @@ a {
     max-width: 180px;
   }
 
+  .health-score {
+    text-align: left;
+    width: 100%;
+  }
+
+  .deadline-card {
+    min-width: 220px;
+  }
+
   .admin-table__row {
     grid-template-columns: 1fr;
     align-items: start;
@@ -1838,6 +1889,22 @@ a {
   .form-grid {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .task-toolbar__meta {
+    align-items: flex-start;
+  }
+
+  .task-toolbar__actions .button,
+  .task-toolbar__actions .select,
+  .list-row .button,
+  .focus-timer__actions .button {
+    width: 100%;
+  }
+
+  .list-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .sidebar {
@@ -1871,6 +1938,12 @@ a {
   .navbar__profile-trigger {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .navbar__menu {
+    left: 0;
+    right: 0;
+    min-width: 0;
   }
 
   .today-card,
@@ -1916,5 +1989,60 @@ a {
 
   .auth-card__hero h1 {
     font-size: 28px;
+  }
+
+  .focus-modal,
+  .modal-card {
+    padding: 16px 16px 0;
+  }
+
+  .focus-modal__header {
+    flex-direction: column;
+  }
+
+  .kanban-column__header .button,
+  .topbar .button {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-wrapper {
+    padding: 14px 10px 24px;
+  }
+
+  .panel,
+  .metric-tile,
+  .kanban-column,
+  .calendar-panel {
+    padding: 14px;
+  }
+
+  .navbar,
+  .sidebar__brand {
+    border-radius: 14px;
+  }
+
+  .task-row,
+  .task-row__details {
+    padding: 14px;
+  }
+
+  .deadline-card {
+    min-width: 190px;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+  }
+
+  .auth-form,
+  .form-section {
+    padding: 14px;
+  }
+
+  .calendar-grid {
+    min-width: 620px;
   }
 }
